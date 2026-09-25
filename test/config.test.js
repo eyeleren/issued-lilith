@@ -40,3 +40,10 @@ test("unescapes \\n in SYSTEM", () => {
 	const { config } = loadConfig({ DISCORD_TOKEN: "x", SYSTEM: "riga1\\nriga2" });
 	assert.equal(config.chat.systemPrompt, "riga1\nriga2");
 });
+
+test("daily purge time and channels", () => {
+	const { config } = loadConfig({ DISCORD_TOKEN: "x", DAILY_PURGE_CHANNELS: "1253071374055112825", DAILY_PURGE_TIME: "5:30" });
+	assert.deepEqual(config.dailyPurge, { channels: ["1253071374055112825"], time: { hour: 5, minute: 30 } });
+	assert.deepEqual(loadConfig({ DISCORD_TOKEN: "x" }).config.dailyPurge.time, { hour: 5, minute: 0 });
+	assert.throws(() => loadConfig({ DISCORD_TOKEN: "x", DAILY_PURGE_TIME: "25:00" }), ConfigError);
+});

@@ -1,6 +1,6 @@
 {
 	"name": "issued-lilith",
-	"version": "2.3.0",
+	"version": "2.4.0",
 	"description": "Lilith: Discord AI chat bot with OpenAI-compatible LLM fallback and hardban moderation",
 	"license": "MIT",
 	"author": "Simone Zanon",

@@ -13,8 +13,28 @@ services:
       - /share/Container/issued-lilith/data:/app/data
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    labels:
+      com.centurylinklabs.watchtower.enable: "true"
     logging:
       driver: json-file
       options:
         max-size: "10m"
         max-file: "3"
+
+  # Pulls a newer ghcr.io/eyeleren/issued-lilith:2 daily and recreates only containers labelled above.
+  watchtower:
+    image: nickfedor/watchtower:latest
+    container_name: lilith-watchtower
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      TZ: Europe/Rome
+      WATCHTOWER_LABEL_ENABLE: "true"
+      WATCHTOWER_CLEANUP: "true"
+      WATCHTOWER_SCHEDULE: "0 30 4 * * *"
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "2"

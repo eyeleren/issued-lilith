@@ -4,6 +4,7 @@ import path from "node:path";
 import { Client, GatewayIntentBits, Partials, Status } from "discord.js";
 import { ConfigError, loadConfig } from "./config.js";
 import { createChatHandler } from "./features/chat.js";
+import { createDailyPurge } from "./features/dailyPurge.js";
 import { HardbanStore } from "./features/hardban.js";
 import { createLlmClient } from "./llm/client.js";
 import { Conversations } from "./llm/conversations.js";
@@ -69,6 +70,7 @@ async function shutdown(reason, code = 0) {
 	if (shuttingDown) return;
 	shuttingDown = true;
 	log.info(`Shutting down (${reason})`);
+	ctx.dailyPurge.stop();
 	await flushAllStores();
 	await client.destroy().catch(() => undefined);
 	process.exit(code);
@@ -76,6 +78,7 @@ async function shutdown(reason, code = 0) {
 
 const ctx = { config, client, llm, conversations, hardbans, commands, shutdown, log, version };
 ctx.handleMessage = createChatHandler(ctx);
+ctx.dailyPurge = createDailyPurge(ctx);
 
 const events = await loadEvents(client, ctx);
 log.debug(`Events: ${events.join(", ")} · Commands: ${[...commands.keys()].join(", ")}`);

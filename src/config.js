@@ -127,6 +127,10 @@ export function loadConfig(env = process.env) {
 	const stableDiffusion = str("STABLE_DIFFUSION").split(",").map(s => s.trim()).filter(Boolean)
 		.map(u => url("STABLE_DIFFUSION", u)).filter(Boolean);
 
+	const purgeTime = str("DAILY_PURGE_TIME", "05:00");
+	const purgeMatch = /^([01]?\d|2[0-3]):([0-5]\d)$/.exec(purgeTime);
+	if (!purgeMatch) problems.push(`DAILY_PURGE_TIME must be HH:MM (got "${purgeTime}")`);
+
 	const channels = snowflakeList("CHANNELS");
 	const allowDms = bool("ALLOW_DMS", true);
 	if (channels.length === 0) {
@@ -168,6 +172,10 @@ export function loadConfig(env = process.env) {
 			channelId: snowflake("GREETING_CHANNEL_ID"),
 			commanderRoleId: snowflake("COMMANDER_ROLE_ID"),
 			message: unescape(str("GREETING_MESSAGE", "Lilith: LOGIN! A disposizione {role}"))
+		},
+		dailyPurge: {
+			channels: snowflakeList("DAILY_PURGE_CHANNELS"),
+			time: purgeMatch ? { hour: Number(purgeMatch[1]), minute: Number(purgeMatch[2]) } : { hour: 5, minute: 0 }
 		},
 		admins: snowflakeList("ADMIN_IDS"),
 		modlogChannelId: snowflake("MODLOG_CHANNEL_ID"),

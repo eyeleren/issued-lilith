@@ -10,6 +10,7 @@
 - **Fallback tra provider**: lista ordinata. Con timeout, errori, host irraggiungibile o 429 passa al provider successivo; il `retry-after` viene rispettato. Se sono tutti giù risponde "IA momentaneamente offline" e non crasha.
 - **Hardban**: se qualcuno sbanna un utente in lista, il bot lo ribanna subito e registra nel mod-log chi aveva tentato lo sban (letto dall'Audit Log).
 - **Slash command**: `/help`, `/ping`, `/model`, `/system`, `/reset`, `/hardban`, `/restart` e `/text2img` (quest'ultimo solo se è configurato Stable Diffusion).
+- **Pulizia giornaliera**: ogni giorno a un'ora fissa (default 05:00, ora italiana) svuota i canali scelti, conservando il primo messaggio e quelli fissati, e azzera la memoria della conversazione. È una "chat del giorno". Se il bot era spento a quell'ora, recupera la pulizia al riavvio.
 - Stato personalizzato e messaggio di benvenuto al login con mention di un ruolo.
 
 ## Comandi
@@ -24,6 +25,7 @@
 | `/hardban add utente\|id [motivo]` | admin | Aggiunge l'utente alla lista e lo banna se non è già bannato |
 | `/hardban remove utente\|id` | admin | Toglie l'utente dalla lista (il ban resta) |
 | `/hardban list` | admin | Mostra la lista del server |
+| `/purge` | admin | Svuota subito il canale corrente, se è tra quelli con pulizia giornaliera |
 | `/restart` | `ADMIN_IDS` | Salva i dati ed esce; Docker riavvia il container |
 | `/text2img prompt …` | tutti | Genera immagini con AUTOMATIC1111 (solo se c'è `STABLE_DIFFUSION`) |
 
@@ -38,10 +40,11 @@ Per parlare con Lilith in chat: menzionala in un canale presente in `CHANNELS` (
 3. **Bot** » *Privileged Gateway Intents*: attiva **Message Content Intent**. *Server Members Intent* e *Presence Intent* non servono.
 4. **Installation** (o OAuth2 » URL Generator): scope `bot` e `applications.commands`, con questi permessi:
    - View Channels, Send Messages, Send Messages in Threads, Read Message History, Embed Links, Attach Files (per la chat e `/text2img`);
-   - **Ban Members** e **View Audit Log** (per l'hardban).
+   - **Ban Members** e **View Audit Log** (per l'hardban);
+   - **Manage Messages** (per la pulizia giornaliera).
 
    In alternativa usa direttamente questo URL (sostituisci `APP_ID`):
-   `https://discord.com/oauth2/authorize?client_id=APP_ID&scope=bot+applications.commands&permissions=274878024836`
+   `https://discord.com/oauth2/authorize?client_id=APP_ID&scope=bot+applications.commands&permissions=274878033028`
 5. Nel server, il **ruolo del bot deve stare sopra** i ruoli degli utenti che deve bannare.
 
 Intents usati dal bot: `Guilds`, `GuildMessages`, `DirectMessages`, `MessageContent` (privilegiato) e `GuildModeration` (per `guildBanRemove`). `GuildMembers` non serve: i nomi delle mention li prende dal messaggio stesso.
@@ -73,6 +76,8 @@ Copia `.env.example` in `.env` (`make env`) e compilalo. Il file è commentato v
 | `ATTACHMENT_MAX_BYTES` | `100000` | Dimensione massima degli allegati di testo (0 = ignora) |
 | `ACTIVITY_MESSAGE` | — | Stato personalizzato |
 | `GREETING_CHANNEL_ID`, `COMMANDER_ROLE_ID`, `GREETING_MESSAGE` | — | Messaggio al login; `{role}` diventa la mention del ruolo |
+| `DAILY_PURGE_CHANNELS` | — | Canali da svuotare ogni giorno (primo messaggio e messaggi fissati restano) |
+| `DAILY_PURGE_TIME` / `TZ` | `05:00` / UTC | Ora della pulizia e fuso orario: imposta `TZ=Europe/Rome` |
 | `MODLOG_CHANNEL_ID` | — | Canale dove vengono registrati re-ban e modifiche alla lista hardban |
 | `STABLE_DIFFUSION` | — | URL di AUTOMATIC1111 (`--api`); vuota = niente `/text2img` |
 | `LOG_LEVEL` | `info` | `debug`, `info`, `warn`, `error` |
@@ -195,7 +200,11 @@ Il pacchetto è **pubblico**: un pacchetto creato da un workflow eredita la visi
 1. **File Station**: nella cartella condivisa `Container` crea la cartella `issued-lilith` e, al suo interno, la cartella `data`. Copia il tuo `.env` con il nome visibile `lilith.env` (`cp .env lilith.env`, ignorato da git) e caricalo in `issued-lilith`.
    Il risultato deve essere `/share/Container/issued-lilith/lilith.env` più `/share/Container/issued-lilith/data/`.
 2. **Container Station** » *Applications* » *Create*: dai all'applicazione il nome `issued-lilith`, incolla il contenuto di [`docker-compose.qnap.yml`](docker-compose.qnap.yml) e clicca *Create*. Container Station scarica l'immagine da ghcr.io (è pubblica, quindi non serve login) e avvia il bot.
-3. Per aggiornare alla versione più recente: in Container Station apri l'applicazione e ricreala/rifai il deploy (*Recreate*/*Pull and redeploy*, il nome cambia a seconda della versione), così scarica di nuovo l'immagine.
+3. Gli aggiornamenti sono **automatici**: il compose include [Watchtower](https://github.com/nicholas-fedor/watchtower), il fork mantenuto dell'originale `containrrr/watchtower`, ormai abbandonato. Ogni giorno alle 4:30 (ora italiana) controlla se su ghcr.io c'è un'immagine `:2` nuova e, se c'è, la scarica, ricrea il container di Lilith con la stessa configurazione e cancella l'immagine vecchia.
+   - Tocca solo i container con l'etichetta `com.centurylinklabs.watchtower.enable=true`, cioè solo Lilith.
+   - Per avere Watchtower accesso al Docker del NAS (`/var/run/docker.sock`): è il modo standard in cui funziona, ma significa che controlla Docker, quindi usa solo l'immagine indicata.
+   - Il suo eseguibile è compatibile con le pagine da 32 KB del QNAP (verificato con `check-elf-alignment.sh`).
+   - Dopo un aggiornamento Lilith si riavvia e manda di nuovo il messaggio di benvenuto; la pulizia delle 5:00 lo toglie poco dopo.
 
 Non serve sistemare i permessi della cartella `data`: al primo avvio il container la assegna all'utente `node` (uid 1000) e poi gira come quell'utente, non come root.
 

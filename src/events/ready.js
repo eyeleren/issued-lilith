@@ -41,5 +41,7 @@ export default {
 		}
 
 		await sendGreeting(client, config.greeting, log);
+
+		await ctx.dailyPurge.start().catch(err => log.error("Daily purge setup failed:", err));
 	}
 };
