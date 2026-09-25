@@ -164,52 +164,39 @@ Poi, sul QNAP:
 
 ### Opzione B: GitHub Container Registry (build automatica)
 
-Il workflow `.github/workflows/docker.yml` parte a ogni push su `main`. Esegue lint e test, poi compila l'immagine `linux/arm/v7` e la pubblica su `ghcr.io/eyeleren/issued-lilith` con questi tag:
-- `latest` per l'ultima versione di `main`;
-- `sha-xxxxxxx` per ogni commit;
-- `2.0.0` e `2.0` quando fai push di un tag `v2.0.0`.
+A ogni push su `main`, il workflow `.github/workflows/docker.yml`:
+1. esegue lint e test;
+2. compila l'immagine `linux/arm/v7` e la pubblica su `ghcr.io/eyeleren/issued-lilith` con i tag `latest` e `sha-xxxxxxx`;
+3. se la versione di `package.json` non ha ancora un tag, aggiunge all'immagine i tag `2.3.0` e `2`, poi crea il tag git `v2.3.0` e una GitHub Release con le note generate dai commit.
 
-Sulle pull request compila soltanto, senza pubblicare. Il push usa il `GITHUB_TOKEN` del workflow, quindi non devi configurare nessun secret.
+Sulle pull request compila soltanto, senza pubblicare.
 
-**Il pacchetto resta privato anche se la repo è pubblica.** Un package appena pubblicato su GHCR è privato, e il collegamento alla repo gli trasmette i permessi di accesso ma non la visibilità. Dopo il primo run controlla su GitHub » profilo » *Packages* » `issued-lilith` » *Package settings*. ⚠️ Non renderlo mai pubblico: GitHub non permette di tornare a privato.
+#### Versioni automatiche
 
-Sul NAS:
-1. Crea un Personal Access Token (classic) con il solo scope `read:packages`.
-2. Fai login al registry: via SSH con `docker login ghcr.io -u eyeleren` (come password il token), oppure aggiungi il registry `ghcr.io` nelle impostazioni di Container Station.
-3. Accanto al `docker-compose.yml`, nel `.env` aggiungi `LILITH_IMAGE=ghcr.io/eyeleren/issued-lilith:latest`.
-4. Avvia e, per ogni aggiornamento, lancia `docker compose pull && docker compose up -d`.
+Come in issued-app, l'hook `.githooks/pre-commit` aumenta la **minor** di `package.json` a ogni commit (`2.3.0` → `2.4.0`) e la aggiunge al commit. Funziona anche da GitHub Desktop: è scritto solo in `sh` e `awk`, senza `node`.
+- L'hook si installa con `npm install` (script `prepare`, che imposta `core.hooksPath`). Su un clone nuovo basta lanciarlo una volta.
+- Merge, rebase e cherry-pick non incrementano la versione. Per saltare l'incremento: `SKIP_VERSION_BUMP=1` oppure `--no-verify`.
+- La major si cambia a mano in `package.json`.
 
-#### Versioni
+Di tag e Release si occupa il workflow: non serve fare push di tag.
 
-Per rilasciare una versione (con il working tree pulito):
+#### Visibilità
 
-```sh
-make release VERSION=patch    # 2.0.0 → 2.0.1 (oppure minor, major, o 2.1.0 esplicito)
-git push --follow-tags
-```
+Il pacchetto è **pubblico**: un pacchetto creato da un workflow eredita la visibilità della repo, e da pubblico non può più tornare privato. Contiene solo il codice già presente nella repo. `.env`, `data/` e `.git` sono esclusi da `.dockerignore`: **non mettere mai segreti nel Dockerfile** (`ENV`/`ARG`), perché finirebbero in un'immagine scaricabile da chiunque.
 
-`make release` esegue lint e test, aggiorna la versione in `package.json` e `package-lock.json`, crea il commit `chore: release vX.Y.Z` e il tag `vX.Y.Z`. Con il push del tag, il workflow:
-1. controlla che il tag corrisponda a `package.json`;
-2. pubblica l'immagine con i tag `2.0.1`, `2.0` e `2`;
-3. crea una GitHub Release con le note generate dai commit.
+#### Sul NAS
 
-Sul NAS puoi scegliere quanto essere "fermo" con `LILITH_IMAGE`:
+1. Nel `.env` accanto al `docker-compose.yml` imposta `LILITH_IMAGE`:
 
-| `LILITH_IMAGE=ghcr.io/eyeleren/issued-lilith:…` | Cosa ricevi con `docker compose pull` |
-|---|---|
-| `latest` | ogni push su `main` |
-| `2` | tutte le release 2.x.y |
-| `2.0` | solo le patch 2.0.y |
-| `2.0.1` | esattamente quella versione (per tornare indietro) |
+   | `LILITH_IMAGE=ghcr.io/eyeleren/issued-lilith:…` | Cosa ricevi con `docker compose pull` |
+   |---|---|
+   | `latest` | ogni push su `main` |
+   | `2` | ogni versione 2.x |
+   | `2.3.0` | esattamente quella versione (per tornare indietro) |
+
+2. Per aggiornare: `docker compose pull && docker compose up -d`. Non serve fare login: il pacchetto è pubblico.
 
 La versione in esecuzione compare nei log all'avvio e nella risposta di `/ping`.
-
-Per pubblicare a mano dal Mac, senza passare dalle Actions (serve un token con `write:packages`):
-
-```sh
-docker login ghcr.io -u eyeleren
-make push-arm REGISTRY_IMAGE=ghcr.io/eyeleren/issued-lilith:latest
-```
 
 ### Il compose in breve
 

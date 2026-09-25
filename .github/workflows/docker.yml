@@ -3,7 +3,6 @@ name: CI & Docker image
 on:
   push:
     branches: [main]
-    tags: ["v*"]
   pull_request:
   workflow_dispatch:
 
@@ -22,6 +21,10 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      major: ${{ steps.version.outputs.major }}
+      is_new: ${{ steps.version.outputs.is_new }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -31,13 +34,18 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm test
-      - name: Tag matches package.json version
-        if: startsWith(github.ref, 'refs/tags/v')
+      - name: Version from package.json
+        id: version
         run: |
-          pkg="v$(node -p 'require("./package.json").version')"
-          if [ "$pkg" != "$GITHUB_REF_NAME" ]; then
-            echo "::error::Tag $GITHUB_REF_NAME does not match package.json ($pkg). Use: make release VERSION=..."
-            exit 1
+          version="$(node -p 'require("./package.json").version')"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "major=${version%%.*}" >> "$GITHUB_OUTPUT"
+          if git ls-remote --exit-code --tags origin "refs/tags/v$version" >/dev/null; then
+            echo "is_new=false" >> "$GITHUB_OUTPUT"
+            echo "v$version already tagged: no version tags this run"
+          else
+            echo "is_new=true" >> "$GITHUB_OUTPUT"
+            echo "v$version is new"
           fi
 
   image:
@@ -47,6 +55,9 @@ jobs:
     permissions:
       contents: read
       packages: write
+    env:
+      PUBLISH: ${{ github.event_name != 'pull_request' }}
+      RELEASE: ${{ github.ref == 'refs/heads/main' && needs.check.outputs.is_new == 'true' }}
     steps:
       - uses: actions/checkout@v7
 
@@ -54,7 +65,7 @@ jobs:
       - uses: docker/setup-buildx-action@v4
 
       - name: Log in to GHCR
-        if: github.event_name != 'pull_request'
+        if: env.PUBLISH == 'true'
         uses: docker/login-action@v4
         with:
           registry: ${{ env.REGISTRY }}
@@ -69,16 +80,15 @@ jobs:
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
             type=sha,format=short
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=semver,pattern={{major}},enable=${{ !startsWith(github.ref, 'refs/tags/v0.') }}
+            type=raw,value=${{ needs.check.outputs.version }},enable=${{ env.RELEASE }}
+            type=raw,value=${{ needs.check.outputs.major }},enable=${{ env.RELEASE }}
 
       - name: Build (and push unless PR)
         uses: docker/build-push-action@v7
         with:
           context: .
           platforms: ${{ env.PLATFORMS }}
-          push: ${{ github.event_name != 'pull_request' }}
+          push: ${{ env.PUBLISH == 'true' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           # Plain single-platform image, friendlier to older Docker engines like Container Station's.
@@ -87,17 +97,18 @@ jobs:
           cache-to: type=gha,mode=max
 
   release:
-    name: GitHub Release
-    needs: image
-    if: startsWith(github.ref, 'refs/tags/v')
+    name: Tag & GitHub Release
+    needs: [check, image]
+    if: github.ref == 'refs/heads/main' && needs.check.outputs.is_new == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
       - uses: actions/checkout@v7
-      - name: Create release with generated notes
+      - name: Create tag and release
         env:
           GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.check.outputs.version }}
         run: |
-          gh release create "$GITHUB_REF_NAME" --verify-tag --generate-notes \
-            --notes "Image: \`ghcr.io/${{ github.repository }}:${GITHUB_REF_NAME#v}\`"
+          gh release create "v$VERSION" --target "$GITHUB_SHA" --title "v$VERSION" --generate-notes \
+            --notes "Image: \`ghcr.io/${IMAGE_NAME,,}:$VERSION\`"

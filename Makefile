@@ -2,10 +2,10 @@ IMAGE    ?= issued-lilith:latest
 PLATFORM ?= linux/arm/v7
 BUILDER  ?= lilith-builder
 TAR      ?= issued-lilith-armv7.tar
-REGISTRY_IMAGE ?=
+REGISTRY_IMAGE ?= ghcr.io/eyeleren/issued-lilith:latest
 
 .DEFAULT_GOAL := help
-.PHONY: help env install dev start lint test check release buildx-setup build build-arm push-arm save-arm up down logs restart ps
+.PHONY: help env install dev start lint test check buildx-setup build build-arm push-arm save-arm up down logs restart ps
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-13s\033[0m %s\n", $$1, $$2}'
@@ -29,13 +29,6 @@ test: ## Run unit tests
 	npm test
 
 check: lint test ## Lint + tests
-
-release: ## Bump version, commit and tag: make release VERSION=patch|minor|major|x.y.z
-	@test -n "$(VERSION)" || (echo "Usage: make release VERSION=patch|minor|major|x.y.z" && exit 1)
-	@test -z "$$(git status --porcelain)" || (echo "Working tree not clean, commit first" && exit 1)
-	npm run lint && npm test
-	npm version $(VERSION) -m "chore: release v%s"
-	@echo "Now publish it with: git push --follow-tags"
 
 buildx-setup: ## Create a buildx builder able to cross-build (once)
 	docker buildx inspect $(BUILDER) >/dev/null 2>&1 || docker buildx create --name $(BUILDER) --driver docker-container

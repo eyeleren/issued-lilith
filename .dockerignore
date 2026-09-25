@@ -17,3 +17,4 @@ eslint.config.mjs
 docker-compose.yml
 Dockerfile
 .dockerignore
+.githooks/
