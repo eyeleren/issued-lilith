@@ -1,20 +1,18 @@
-# Paste into Container Station » Applications » Create. Expects /share/Container/issued-lilith/.env
+# Paste into Container Station » Applications » Create. Expects /share/Container/issued-lilith/lilith.env.
+# Container Station rejects resource limits in YAML: set them in its Advanced Settings instead.
 services:
   lilith:
     image: ghcr.io/eyeleren/issued-lilith:2
     container_name: issued-lilith
     restart: unless-stopped
     init: true
-    env_file: /share/Container/issued-lilith/.env
+    env_file: /share/Container/issued-lilith/lilith.env
     environment:
       DATA_DIR: /app/data
     volumes:
       - /share/Container/issued-lilith/data:/app/data
     extra_hosts:
       - "host.docker.internal:host-gateway"
-    mem_limit: 256m
-    memswap_limit: 256m
-    cpus: 1.0
     logging:
       driver: json-file
       options:

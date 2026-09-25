@@ -141,7 +141,13 @@ Altri comandi: `npm run lint`, `npm test`, `make check` (lint + test), `make hel
 
 ## Deploy sul QNAP (Container Station)
 
-Il TS-x31P3 ha una CPU ARMv7 a 32 bit: l'immagine si compila sul Mac per `linux/arm/v7` con buildx (emulazione QEMU, già inclusa in Docker Desktop). `node:22-bookworm-slim` è disponibile anche per `arm/v7`.
+Il TS-x31P3 ha una CPU ARMv7 a 32 bit: l'immagine si compila per `linux/arm/v7` (con buildx sul Mac o nelle GitHub Actions).
+
+⚠️ **Il kernel del QNAP usa pagine di memoria da 32 KB.** Un programma si avvia solo se è compilato con segmenti allineati ad almeno 32 KB; altrimenti il container muore subito con `error while loading shared libraries: libc.so.6: ELF load command address/offset not page-aligned`. Per questo l'immagine usa **`node:22-bullseye-slim`**, dove tutti i file sono allineati a 64 KB. Non usarne altre:
+- `bookworm`: la sua libc è allineata a 4 KB;
+- `alpine`: tutti i file sono allineati a 4 KB.
+
+Il workflow controlla l'allineamento di ogni file dell'immagine (`.github/scripts/check-elf-alignment.sh`) e non pubblica se ne trova uno sotto i 32 KB. Debian 11 bullseye non riceve più aggiornamenti di sicurezza da agosto 2026: per un bot senza porte esposte il rischio è basso, ma quando uscirà un'immagine Node compatibile con pagine da 32 KB conviene passarci.
 
 ### Opzione A: esportare un `.tar` da importare
 
@@ -186,8 +192,8 @@ Il pacchetto è **pubblico**: un pacchetto creato da un workflow eredita la visi
 
 #### Sul NAS, solo dall'interfaccia web
 
-1. **File Station**: nella cartella condivisa `Container` crea la cartella `issued-lilith` e, al suo interno, la cartella `data`. Carica in `issued-lilith` il tuo file `.env`.
-   Il risultato deve essere `/share/Container/issued-lilith/.env` più `/share/Container/issued-lilith/data/`.
+1. **File Station**: nella cartella condivisa `Container` crea la cartella `issued-lilith` e, al suo interno, la cartella `data`. Copia il tuo `.env` con il nome visibile `lilith.env` (`cp .env lilith.env`, ignorato da git) e caricalo in `issued-lilith`.
+   Il risultato deve essere `/share/Container/issued-lilith/lilith.env` più `/share/Container/issued-lilith/data/`.
 2. **Container Station** » *Applications* » *Create*: dai all'applicazione il nome `issued-lilith`, incolla il contenuto di [`docker-compose.qnap.yml`](docker-compose.qnap.yml) e clicca *Create*. Container Station scarica l'immagine da ghcr.io (è pubblica, quindi non serve login) e avvia il bot.
 3. Per aggiornare alla versione più recente: in Container Station apri l'applicazione e ricreala/rifai il deploy (*Recreate*/*Pull and redeploy*, il nome cambia a seconda della versione), così scarica di nuovo l'immagine.
 

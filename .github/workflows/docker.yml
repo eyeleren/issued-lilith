@@ -83,12 +83,27 @@ jobs:
             type=raw,value=${{ needs.check.outputs.version }},enable=${{ env.RELEASE }}
             type=raw,value=${{ needs.check.outputs.major }},enable=${{ env.RELEASE }}
 
-      - name: Build (and push unless PR)
+      - name: Build for checks
         uses: docker/build-push-action@v7
         with:
           context: .
           platforms: ${{ env.PLATFORMS }}
-          push: ${{ env.PUBLISH == 'true' }}
+          load: true
+          tags: lilith:ci
+          provenance: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Check ELF alignment for QNAP 32 KB pages
+        run: sh .github/scripts/check-elf-alignment.sh lilith:ci
+
+      - name: Push
+        if: env.PUBLISH == 'true'
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          platforms: ${{ env.PLATFORMS }}
+          push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           # Plain single-platform image, friendlier to older Docker engines like Container Station's.

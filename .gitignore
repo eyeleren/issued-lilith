@@ -8,3 +8,4 @@ data/
 .vscode/
 .idea/
 npm-debug.log*
+lilith.env

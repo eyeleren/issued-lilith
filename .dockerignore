@@ -18,3 +18,4 @@ docker-compose.yml
 Dockerfile
 .dockerignore
 .githooks/
+lilith.env
