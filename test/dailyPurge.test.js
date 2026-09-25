@@ -29,7 +29,7 @@ function fakeChannel(messages, pinned = []) {
 		deleted,
 		messages: {
 			fetchPins: async () => ({ items: pinned.map(id => ({ message: { id }, pinnedTimestamp: 1 })), hasMore: false }),
-			fetch: async ({ after, before, limit }) => {
+			fetch: async ({ before, limit }) => {
 				const sorted = [...store.values()].sort((a, b) => Number(BigInt(b.id) - BigInt(a.id)));
 				const from = before ? sorted.filter(m => BigInt(m.id) < BigInt(before)) : sorted;
 				return col(from.slice(0, limit));
