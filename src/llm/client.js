@@ -80,8 +80,14 @@ export function createLlmClient(options, { fetchImpl = globalThis.fetch, sleep =
 		const choice = body?.choices?.[0];
 		if (!choice?.message) throw new ProviderError(provider.name, "response has no choices[0].message", { status: res.status });
 
+		// A cut-off or empty reply ends up in the history and the model starts imitating it,
+		// so it counts as a failure: the next provider gets a go, without a cooldown.
+		const content = typeof choice.message.content === "string" ? choice.message.content : "";
+		if (choice.finish_reason === "length") throw new ProviderError(provider.name, "reply truncated (finish_reason=length)", { status: res.status });
+		if (!content.trim()) throw new ProviderError(provider.name, "empty reply", { status: res.status });
+
 		return {
-			content: typeof choice.message.content === "string" ? choice.message.content : "",
+			content,
 			provider: provider.name,
 			model: body.model ?? provider.model,
 			usage: body.usage ?? null

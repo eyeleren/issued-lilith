@@ -123,13 +123,14 @@ export function createChatHandler({ config, llm, conversations }) {
 			stopTyping();
 		}
 
-		const reply = limitEmoji(stripReasoning(answer.content), chat.maxEmojis) || "(Nessuna risposta)";
+		const reply = limitEmoji(stripReasoning(answer.content), chat.maxEmojis);
 		const prefix = isFirstTurn && chat.showStartOfConversation
 			? "> Inizio di una nuova conversazione. Usa `/help` per i comandi.\n\n"
 			: "";
 
-		const sent = await replyInChunks(message, prefix + reply);
-		conversations.append(key, userContent, reply, sent.map(m => m.id));
+		// An empty turn is not stored: the model would learn to answer with nothing.
+		const sent = await replyInChunks(message, prefix + (reply || "(Nessuna risposta)"));
+		if (reply) conversations.append(key, userContent, reply, sent.map(m => m.id));
 		log.debug(`Replied via ${answer.provider} (${answer.model}), ${reply.length} chars`);
 	}
 

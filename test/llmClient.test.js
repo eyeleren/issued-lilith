@@ -70,6 +70,15 @@ test("429 with long retry-after skips to next provider and sets cooldown", async
 	assert.equal(calls.filter(c => c.host === "groq").length, 2, "groq retried after cooldown");
 });
 
+test("truncated or empty replies fall back to the next provider without a cooldown", async () => {
+	const truncated = () => new Response(JSON.stringify({ choices: [{ message: { content: "Uno è un nome, l" }, finish_reason: "length" }] }), { status: 200 });
+	const { fetchImpl } = fakeFetch({ groq: truncated, mid: ok("  "), ollama: ok("intera") });
+	const llm = createLlmClient({ ...options, providers: [provider("groq"), provider("mid"), provider("ollama")] }, { fetchImpl });
+	const res = await llm.chat([]);
+	assert.equal(res.content, "intera");
+	assert.ok(llm.status().every(s => s.cooldownMs === 0));
+});
+
 test("throws AllProvidersFailedError when everything fails", async () => {
 	const { fetchImpl } = fakeFetch({ groq: status(500), ollama: status(401) });
 	const llm = createLlmClient({ ...options, providers: [provider("groq"), provider("ollama")] }, { fetchImpl });

@@ -10,11 +10,12 @@ export function renderSystemPrompt({ systemPrompt, creatorId, creatorName }, now
 	return parts.join("\n\n");
 }
 
-// Brackets are stripped from names so nobody can fake the creator tag with a nickname.
+// Brackets are stripped from names, and the tag from other people's text, so nobody can fake it.
 export function formatUserMessage(text, { name, inGuild, isCreator }) {
 	const safeName = name.replace(/[[\]]/g, "").trim() || "utente";
 	if (isCreator) return `${CREATOR_TAG} ${safeName}: ${text}`;
-	return inGuild ? `${safeName}: ${text}` : text;
+	const safeText = text.replace(/\[\s*creatore\s*\]/gi, "creatore");
+	return inGuild ? `${safeName}: ${safeText}` : safeText;
 }
 
 // Uses only message.mentions and the channel cache: no member fetch, no GuildMembers intent.
