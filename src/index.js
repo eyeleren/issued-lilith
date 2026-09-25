@@ -3,6 +3,7 @@ import { createRequire } from "node:module";
 import path from "node:path";
 import { Client, GatewayIntentBits, Partials, Status } from "discord.js";
 import { ConfigError, loadConfig } from "./config.js";
+import { loadEnvFiles } from "./env.js";
 import { createChatHandler } from "./features/chat.js";
 import { createDailyPurge } from "./features/dailyPurge.js";
 import { HardbanStore } from "./features/hardban.js";
@@ -16,18 +17,14 @@ const log = createLogger("main");
 const { version } = createRequire(import.meta.url)("../package.json");
 const HEARTBEAT_INTERVAL_MS = 30_000;
 
-// Local runs read .env; in Docker the variables come from compose's env_file.
-try {
-	process.loadEnvFile();
-} catch (err) {
-	if (err.code !== "ENOENT") throw err;
-}
+const envFiles = loadEnvFiles();
 
 let config;
 try {
 	const loaded = loadConfig();
 	config = loaded.config;
 	setLogLevel(config.logLevel);
+	if (envFiles.length > 0) log.info(`Config read from ${envFiles.join(", ")}`);
 	for (const warning of loaded.warnings) log.warn(warning);
 } catch (err) {
 	if (err instanceof ConfigError) {

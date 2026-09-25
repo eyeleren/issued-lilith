@@ -47,3 +47,12 @@ test("daily purge time and channels", () => {
 	assert.deepEqual(loadConfig({ DISCORD_TOKEN: "x" }).config.dailyPurge.time, { hour: 5, minute: 0 });
 	assert.throws(() => loadConfig({ DISCORD_TOKEN: "x", DAILY_PURGE_TIME: "25:00" }), ConfigError);
 });
+
+test("Watchtower is enabled only with both URL and token", () => {
+	assert.equal(loadConfig({ DISCORD_TOKEN: "x" }).config.watchtower, null);
+	const half = loadConfig({ DISCORD_TOKEN: "x", WATCHTOWER_URL: "http://watchtower:8080" });
+	assert.equal(half.config.watchtower, null);
+	assert.ok(half.warnings.some(w => w.includes("WATCHTOWER_TOKEN")));
+	const full = loadConfig({ DISCORD_TOKEN: "x", WATCHTOWER_URL: "http://watchtower:8080/", WATCHTOWER_TOKEN: "t" });
+	assert.deepEqual(full.config.watchtower, { url: "http://watchtower:8080", token: "t" });
+});

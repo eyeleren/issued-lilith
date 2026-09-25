@@ -131,6 +131,12 @@ export function loadConfig(env = process.env) {
 	const purgeMatch = /^([01]?\d|2[0-3]):([0-5]\d)$/.exec(purgeTime);
 	if (!purgeMatch) problems.push(`DAILY_PURGE_TIME must be HH:MM (got "${purgeTime}")`);
 
+	const watchtowerUrl = str("WATCHTOWER_URL");
+	const watchtowerToken = str("WATCHTOWER_TOKEN");
+	if (Boolean(watchtowerUrl) !== Boolean(watchtowerToken)) {
+		warnings.push("WATCHTOWER_URL and WATCHTOWER_TOKEN must both be set: /update is disabled");
+	}
+
 	const channels = snowflakeList("CHANNELS");
 	const allowDms = bool("ALLOW_DMS", true);
 	if (channels.length === 0) {
@@ -180,6 +186,9 @@ export function loadConfig(env = process.env) {
 		},
 		admins: snowflakeList("ADMIN_IDS"),
 		modlogChannelId: snowflake("MODLOG_CHANNEL_ID"),
+		watchtower: watchtowerUrl && watchtowerToken
+			? { url: url("WATCHTOWER_URL", watchtowerUrl), token: watchtowerToken }
+			: null,
 		stableDiffusion: {
 			urls: stableDiffusion,
 			timeoutMs: int("STABLE_DIFFUSION_TIMEOUT_MS", 120_000, { min: 1000, max: 900_000 })

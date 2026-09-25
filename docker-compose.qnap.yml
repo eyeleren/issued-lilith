@@ -1,4 +1,5 @@
-# Paste into Container Station » Applications » Create. Expects /share/Container/issued-lilith/lilith.env.
+# Paste into Container Station » Applications » Create. Replace the Watchtower token below.
+# Config lives in /share/Container/issued-lilith/data/lilith.env and is read at every start: /restart applies it.
 # Container Station rejects resource limits in YAML: set them in its Advanced Settings instead.
 services:
   lilith:
@@ -6,7 +7,6 @@ services:
     container_name: issued-lilith
     restart: unless-stopped
     init: true
-    env_file: /share/Container/issued-lilith/lilith.env
     environment:
       DATA_DIR: /app/data
     volumes:
@@ -22,6 +22,7 @@ services:
         max-file: "3"
 
   # Pulls a newer ghcr.io/eyeleren/issued-lilith:2 daily and recreates only containers labelled above.
+  # /update triggers the same thing on demand through its HTTP API (not published outside this app).
   watchtower:
     image: nickfedor/watchtower:latest
     container_name: lilith-watchtower
@@ -33,6 +34,10 @@ services:
       WATCHTOWER_LABEL_ENABLE: "true"
       WATCHTOWER_CLEANUP: "true"
       WATCHTOWER_SCHEDULE: "0 30 4 * * *"
+      WATCHTOWER_HTTP_API_UPDATE: "true"
+      WATCHTOWER_HTTP_API_PERIODIC_POLLS: "true"
+      # Same value as WATCHTOWER_TOKEN in lilith.env.
+      WATCHTOWER_HTTP_API_TOKEN: change-me
     logging:
       driver: json-file
       options:

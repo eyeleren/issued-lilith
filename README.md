@@ -9,7 +9,7 @@
 - **Chat con LLM**: storico per canale e per DM (persistito su disco), system prompt configurabile, lettura degli allegati testuali, sostituzione di mention, canali ed emoji, risposte divise a 2000 caratteri senza rompere i blocchi di codice, indicatore "sta scrivendo".
 - **Fallback tra provider**: lista ordinata. Con timeout, errori, host irraggiungibile o 429 passa al provider successivo; il `retry-after` viene rispettato. Se sono tutti giù risponde "IA momentaneamente offline" e non crasha.
 - **Hardban**: se qualcuno sbanna un utente in lista, il bot lo ribanna subito e registra nel mod-log chi aveva tentato lo sban (letto dall'Audit Log).
-- **Slash command**: `/help`, `/ping`, `/model`, `/system`, `/reset`, `/hardban`, `/restart` e `/text2img` (quest'ultimo solo se è configurato Stable Diffusion).
+- **Slash command**: `/help`, `/ping`, `/model`, `/system`, `/reset`, `/hardban`, `/restart`, `/update` (solo se è configurato Watchtower) e `/text2img` (solo se è configurato Stable Diffusion).
 - **Pulizia giornaliera**: ogni giorno a un'ora fissa (default 05:00, ora italiana) svuota i canali scelti, conservando solo i messaggi fissati, e azzera la memoria della conversazione. È una "chat del giorno". Se il bot era spento a quell'ora, recupera la pulizia al riavvio.
 - Stato personalizzato e messaggio di benvenuto al login con mention di un ruolo.
 
@@ -26,7 +26,8 @@
 | `/hardban remove utente\|id` | admin | Toglie l'utente dalla lista (il ban resta) |
 | `/hardban list` | admin | Mostra la lista del server |
 | `/purge` | admin | Svuota subito il canale corrente, se è tra quelli con pulizia giornaliera |
-| `/restart` | `ADMIN_IDS` | Salva i dati ed esce; Docker riavvia il container |
+| `/restart` | `ADMIN_IDS` | Salva i dati ed esce; Docker riavvia il container, che rilegge `data/lilith.env` e `persona.txt` |
+| `/update` | `ADMIN_IDS` | Fa scaricare subito a Watchtower l'ultima immagine e ricreare il container; a fine aggiornamento la risposta mostra la nuova versione (solo se ci sono `WATCHTOWER_URL` e `WATCHTOWER_TOKEN`) |
 | `/text2img prompt …` | tutti | Genera immagini con AUTOMATIC1111 (solo se c'è `STABLE_DIFFUSION`) |
 
 "Admin" significa: ID presente in `ADMIN_IDS` **oppure** permesso Administrator nel server.
@@ -59,7 +60,7 @@ Copia `.env.example` in `.env` (`make env`) e compilalo. Le variabili lasciate v
 |---|---|---|
 | `DISCORD_TOKEN` | **obbligatoria** | Token del bot |
 | `GUILD_ID` | — | Solo per lo sviluppo: registra i comandi su questa guild (effetto immediato). Vuota = registrazione globale |
-| `ADMIN_IDS` | — | ID separati da virgola: `/restart` e `/hardban` |
+| `ADMIN_IDS` | — | ID separati da virgola: `/restart`, `/update` e `/hardban` |
 | `CREATOR_ID` | — | ID Discord del creatore: i suoi messaggi arrivano al modello marcati `[creatore]`, così Lilith lo riconosce anche se qualcuno copia il suo nickname |
 | `CREATOR_NAME` | — | Alias del creatore: il bot lo conosce e può usarlo, oltre al nome visualizzato che il creatore ha in quel momento |
 | `LLM_PROVIDERS` | — | Lista ordinata, es. `groq,ollama`. Vedi sotto |
@@ -77,6 +78,7 @@ Copia `.env.example` in `.env` (`make env`) e compilalo. Le variabili lasciate v
 | `ATTACHMENT_MAX_BYTES` | `100000` | Dimensione massima degli allegati di testo (0 = ignora) |
 | `ACTIVITY_MESSAGE` | — | Stato personalizzato |
 | `GREETING_CHANNEL_ID`, `COMMANDER_ROLE_ID`, `GREETING_MESSAGE` | — | Messaggio al login; `{role}` diventa la mention del ruolo |
+| `WATCHTOWER_URL`, `WATCHTOWER_TOKEN` | — | API HTTP di Watchtower per `/update` (sul NAS `http://watchtower:8080`); il token è lo stesso di `WATCHTOWER_HTTP_API_TOKEN` nello YAML |
 | `DAILY_PURGE_CHANNELS` | — | Canali da svuotare ogni giorno (restano solo i messaggi fissati) |
 | `DAILY_PURGE_TIME` / `TZ` | `05:00` / UTC | Ora della pulizia e fuso orario: imposta `TZ=Europe/Rome` |
 | `MODLOG_CHANNEL_ID` | — | Canale dove vengono registrati re-ban e modifiche alla lista hardban |
@@ -198,18 +200,20 @@ Il pacchetto è **pubblico**: un pacchetto creato da un workflow eredita la visi
 
 #### Sul NAS, solo dall'interfaccia web
 
-1. **File Station**: nella cartella condivisa `Container` crea la cartella `issued-lilith` e, al suo interno, la cartella `data`. Copia il tuo `.env` con il nome visibile `lilith.env` (`cp .env lilith.env`, ignorato da git) e caricalo in `issued-lilith`.
-   Il risultato deve essere `/share/Container/issued-lilith/lilith.env` più `/share/Container/issued-lilith/data/`.
-2. **Container Station** » *Applications* » *Create*: dai all'applicazione il nome `issued-lilith`, incolla il contenuto di [`docker-compose.qnap.yml`](docker-compose.qnap.yml) e clicca *Create*. Container Station scarica l'immagine da ghcr.io (è pubblica, quindi non serve login) e avvia il bot.
+1. **File Station**: nella cartella condivisa `Container` crea la cartella `issued-lilith` e, al suo interno, la cartella `data`. Copia il tuo `.env` con il nome visibile `lilith.env` (`cp .env lilith.env`, ignorato da git) e caricalo in `issued-lilith/data`, insieme a `persona.txt`.
+   Il risultato deve essere `/share/Container/issued-lilith/data/lilith.env`.
+2. **Container Station** » *Applications* » *Create*: dai all'applicazione il nome `issued-lilith`, incolla il contenuto di [`docker-compose.qnap.yml`](docker-compose.qnap.yml), sostituisci `change-me` con lo stesso valore di `WATCHTOWER_TOKEN` (una stringa casuale, es. `openssl rand -hex 24`) e clicca *Create*. Container Station scarica l'immagine da ghcr.io (è pubblica, quindi non serve login) e avvia il bot.
 3. Gli aggiornamenti sono **automatici**: il compose include [Watchtower](https://github.com/nicholas-fedor/watchtower), il fork mantenuto dell'originale `containrrr/watchtower`, ormai abbandonato. Ogni giorno alle 4:30 (ora italiana) controlla se su ghcr.io c'è un'immagine `:2` nuova e, se c'è, la scarica, ricrea il container di Lilith con la stessa configurazione e cancella l'immagine vecchia.
    - Tocca solo i container con l'etichetta `com.centurylinklabs.watchtower.enable=true`, cioè solo Lilith.
    - Per avere Watchtower accesso al Docker del NAS (`/var/run/docker.sock`): è il modo standard in cui funziona, ma significa che controlla Docker, quindi usa solo l'immagine indicata.
    - Il suo eseguibile è compatibile con le pagine da 32 KB del QNAP (verificato con `check-elf-alignment.sh`).
+   - Per non aspettare le 4:30 c'è `/update`: Lilith chiede a Watchtower di controllare subito tramite la sua API HTTP, raggiungibile solo dentro l'applicazione e protetta dal token.
    - Dopo un aggiornamento Lilith si riavvia e manda di nuovo il messaggio di benvenuto; la pulizia delle 5:00 lo toglie poco dopo.
 
 **Cambiare la configurazione:**
-- `persona.txt` (in `data/`, collegato con `SYSTEM_FILE=/app/data/persona.txt`) viene letto a ogni avvio: dopo una modifica basta **riavviare** il container.
-- `lilith.env` viene letto solo quando il container viene **creato**: né un riavvio né un aggiornamento di Watchtower lo rileggono. Dopo una modifica bisogna **ricreare** l'applicazione (eliminarla e crearla di nuovo con lo stesso YAML; l'immagine e `data/` restano).
+- `data/lilith.env` e `persona.txt` (collegato con `SYSTEM_FILE=/app/data/persona.txt`) vengono letti a ogni avvio: dopo una modifica basta **`/restart`**.
+- `data/lilith.env` ha la precedenza sulle variabili del compose e su `.env`.
+- Va **ricreata** l'applicazione solo se cambia lo YAML (eliminarla e crearla di nuovo; l'immagine e `data/` restano).
 
 Non serve sistemare i permessi della cartella `data`: al primo avvio il container la assegna all'utente `node` (uid 1000) e poi gira come quell'utente, non come root.
 
@@ -228,7 +232,7 @@ La versione in esecuzione compare nei log all'avvio e nella risposta di `/ping`.
 ### Il compose in breve
 
 - `restart: unless-stopped` e `init: true`;
-- volume `./data:/app/data`, variabili da `env_file: .env`;
+- volume `./data:/app/data`, variabili da `env_file: .env` (e da `data/lilith.env`, se esiste, che ha la precedenza);
 - `extra_hosts: host.docker.internal:host-gateway`;
 - limite di 256 MB di RAM (heap Node a 192 MB) e 1 CPU;
 - log ruotati (10 MB × 3).

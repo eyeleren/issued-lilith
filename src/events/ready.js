@@ -1,4 +1,5 @@
 import { ActivityType, Events } from "discord.js";
+import { announceUpdate } from "../features/updater.js";
 import { registerCommands } from "../registerCommands.js";
 
 async function sendGreeting(client, { channelId, commanderRoleId, message }, log) {
@@ -41,6 +42,7 @@ export default {
 		}
 
 		await sendGreeting(client, config.greeting, log);
+		await announceUpdate(ctx, client);
 
 		await ctx.dailyPurge.start().catch(err => log.error("Daily purge setup failed:", err));
 	}
