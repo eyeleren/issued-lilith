@@ -163,6 +163,7 @@ export function loadConfig(env = process.env) {
 			initialPrompt: unescape(str("INITIAL_PROMPT")),
 			showStartOfConversation: bool("SHOW_START_OF_CONVERSATION", false),
 			historyMaxMessages: int("HISTORY_MAX_MESSAGES", 20, { min: 2, max: 500 }),
+			maxEmojis: str("MAX_EMOJIS") === "" ? null : int("MAX_EMOJIS", null, { min: 0, max: 50 }),
 			attachmentMaxBytes: int("ATTACHMENT_MAX_BYTES", 100_000, { min: 0, max: 8_000_000 })
 		},
 		presence: {

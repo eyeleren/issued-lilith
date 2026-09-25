@@ -32,3 +32,12 @@ test("system prompt gets the creator note only when CREATOR_ID is set", () => {
 	assert.ok(withCreator.includes("<@167977870600306688>"));
 	assert.equal(renderSystemPrompt({ systemPrompt: "", creatorId: null }), "");
 });
+
+test("limitEmoji keeps only the first N emoji and tidies spacing", async () => {
+	const { limitEmoji } = await import("../src/llm/prompt.js");
+	assert.equal(limitEmoji("Sei tu. 😏\n\nChi altri? 🖤\n\nNon chiedermelo di nuovo. 💋", 1), "Sei tu. 😏\n\nChi altri?\n\nNon chiedermelo di nuovo.");
+	assert.equal(limitEmoji("ciao 👩‍❤️‍👨 e 🇮🇹 e 👍🏽", 2), "ciao 👩‍❤️‍👨 e 🇮🇹 e");
+	assert.equal(limitEmoji("niente 😈 emoji 🔥", 0), "niente emoji");
+	assert.equal(limitEmoji("libero 😈🔥", null), "libero 😈🔥");
+	assert.equal(limitEmoji("numeri 1 2 3 e #tag restano", 0), "numeri 1 2 3 e #tag restano");
+});

@@ -1,6 +1,6 @@
 import { MessageType } from "discord.js";
 import { AllProvidersFailedError } from "../llm/client.js";
-import { cleanContent, formatUserMessage, renderSystemPrompt, stripReasoning } from "../llm/prompt.js";
+import { cleanContent, formatUserMessage, limitEmoji, renderSystemPrompt, stripReasoning } from "../llm/prompt.js";
 import { createLogger } from "../logger.js";
 import { splitMessage } from "../util/splitMessage.js";
 
@@ -123,7 +123,7 @@ export function createChatHandler({ config, llm, conversations }) {
 			stopTyping();
 		}
 
-		const reply = stripReasoning(answer.content) || "(Nessuna risposta)";
+		const reply = limitEmoji(stripReasoning(answer.content), chat.maxEmojis) || "(Nessuna risposta)";
 		const prefix = isFirstTurn && chat.showStartOfConversation
 			? "> Inizio di una nuova conversazione. Usa `/help` per i comandi.\n\n"
 			: "";

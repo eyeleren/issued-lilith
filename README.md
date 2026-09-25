@@ -53,7 +53,7 @@ Per copiare gli ID (canali, ruoli, utenti): Impostazioni Discord » Avanzate » 
 
 ## Configurazione
 
-Copia `.env.example` in `.env` (`make env`) e compilalo. Il file è commentato variabile per variabile; quelle principali:
+Copia `.env.example` in `.env` (`make env`) e compilalo. Le variabili lasciate vuote usano il valore predefinito o disattivano la funzione:
 
 | Variabile | Default | Note |
 |---|---|---|
@@ -73,6 +73,7 @@ Copia `.env.example` in `.env` (`make env`) e compilalo. Il file è commentato v
 | `SYSTEM` / `SYSTEM_FILE` | — | System prompt su una riga (`\n` per andare a capo, `<date>` = data/ora corrente) oppure da file |
 | `INITIAL_PROMPT` | — | Testo anteposto al primo messaggio di ogni conversazione |
 | `SHOW_START_OF_CONVERSATION` | `false` | Mostra una nota al primo messaggio |
+| `MAX_EMOJIS` | — | Emoji massime per risposta: le successive vengono tolte (vuota = nessun limite) |
 | `ATTACHMENT_MAX_BYTES` | `100000` | Dimensione massima degli allegati di testo (0 = ignora) |
 | `ACTIVITY_MESSAGE` | — | Stato personalizzato |
 | `GREETING_CHANNEL_ID`, `COMMANDER_ROLE_ID`, `GREETING_MESSAGE` | — | Messaggio al login; `{role}` diventa la mention del ruolo |
