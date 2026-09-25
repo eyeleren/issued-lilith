@@ -1,0 +1,22 @@
+services:
+  lilith:
+    image: ${LILITH_IMAGE:-issued-lilith:latest}
+    build: .
+    container_name: issued-lilith
+    restart: unless-stopped
+    init: true
+    env_file: .env
+    environment:
+      DATA_DIR: /app/data
+    volumes:
+      - ./data:/app/data
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    mem_limit: 256m
+    memswap_limit: 256m
+    cpus: 1.0
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

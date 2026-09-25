@@ -1,0 +1,28 @@
+{
+	"name": "issued-lilith",
+	"version": "2.0.0",
+	"description": "Lilith: Discord AI chat bot with OpenAI-compatible LLM fallback and hardban moderation",
+	"license": "MIT",
+	"author": "Simone Zanon",
+	"private": true,
+	"type": "module",
+	"main": "src/index.js",
+	"engines": {
+		"node": ">=22"
+	},
+	"scripts": {
+		"start": "node src/index.js",
+		"dev": "node --watch src/index.js",
+		"lint": "eslint .",
+		"lint:fix": "eslint . --fix",
+		"test": "node --test"
+	},
+	"dependencies": {
+		"discord.js": "^14.27.0"
+	},
+	"devDependencies": {
+		"@eslint/js": "^10.0.1",
+		"eslint": "^10.11.0",
+		"globals": "^17.12.0"
+	}
+}
