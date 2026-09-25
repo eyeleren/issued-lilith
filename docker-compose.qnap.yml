@@ -1,0 +1,22 @@
+# Paste into Container Station » Applications » Create. Expects /share/Container/issued-lilith/.env
+services:
+  lilith:
+    image: ghcr.io/eyeleren/issued-lilith:2
+    container_name: issued-lilith
+    restart: unless-stopped
+    init: true
+    env_file: /share/Container/issued-lilith/.env
+    environment:
+      DATA_DIR: /app/data
+    volumes:
+      - /share/Container/issued-lilith/data:/app/data
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    mem_limit: 256m
+    memswap_limit: 256m
+    cpus: 1.0
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

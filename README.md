@@ -57,6 +57,8 @@ Copia `.env.example` in `.env` (`make env`) e compilalo. Il file è commentato v
 | `DISCORD_TOKEN` | **obbligatoria** | Token del bot |
 | `GUILD_ID` | — | Solo per lo sviluppo: registra i comandi su questa guild (effetto immediato). Vuota = registrazione globale |
 | `ADMIN_IDS` | — | ID separati da virgola: `/restart` e `/hardban` |
+| `CREATOR_ID` | — | ID Discord del creatore: i suoi messaggi arrivano al modello marcati `[creatore]`, così Lilith lo riconosce anche se qualcuno copia il suo nickname |
+| `CREATOR_NAME` | — | Alias del creatore: il bot lo conosce e può usarlo, oltre al nome visualizzato che il creatore ha in quel momento |
 | `LLM_PROVIDERS` | — | Lista ordinata, es. `groq,ollama`. Vedi sotto |
 | `LLM_TIMEOUT_MS` | `30000` | Timeout per richiesta (sovrascrivibile con `LLM_<NOME>_TIMEOUT_MS`) |
 | `LLM_MAX_RETRY_WAIT_S` | `10` | Con un 429, attesa massima accettata prima di riprovare lo stesso provider |
@@ -98,18 +100,21 @@ LLM_<NOME>_API_KEY=...       # se il provider la richiede
 LLM_<NOME>_TIMEOUT_MS=...    # opzionale
 ```
 
-Esempio con Groq come primario e Ollama sul Mac come riserva:
+Esempio: due modelli Groq con la stessa chiave (un modello veloce e uno stabile di riserva; Groq conta i limiti per modello) e Ollama sul Mac come ultima spiaggia:
 
 ```env
-LLM_PROVIDERS=groq,ollama
+LLM_PROVIDERS=groq,groq_oss,ollama
 LLM_GROQ_BASE_URL=https://api.groq.com/openai/v1
 LLM_GROQ_API_KEY=gsk_...
-LLM_GROQ_MODEL=llama-3.3-70b-versatile
+LLM_GROQ_MODEL=qwen/qwen3.8-27b
+LLM_GROQ_OSS_BASE_URL=https://api.groq.com/openai/v1
+LLM_GROQ_OSS_API_KEY=gsk_...
+LLM_GROQ_OSS_MODEL=openai/gpt-oss-120b
 LLM_OLLAMA_BASE_URL=http://192.168.1.50:11434/v1
 LLM_OLLAMA_MODEL=llama3.2
 ```
 
-- **Groq**: modelli in produzione a settembre 2026: `llama-3.3-70b-versatile` (default consigliato), `llama-3.1-8b-instant` (più veloce, limiti free più alti), `openai/gpt-oss-120b`, `openai/gpt-oss-20b`. L'elenco aggiornato è su <https://console.groq.com/docs/models>.
+- **Groq**: i modelli disponibili **dipendono dall'account** e non sempre coincidono con quelli della [documentazione](https://console.groq.com/docs/models). Controlla i tuoi con `curl -H "Authorization: Bearer gsk_..." https://api.groq.com/openai/v1/models`. Con un modello non disponibile Groq risponde `404 model_not_found` e il bot passa al provider successivo. I modelli "preview" (es. `qwen/qwen3.8-27b`) possono sparire con poco preavviso: tieni un modello di produzione (es. `openai/gpt-oss-120b`) come riserva.
 - **Ollama sul Mac**: il NAS e il Mac sono macchine diverse, quindi usa l'IP LAN del Mac e avvia Ollama in ascolto sulla rete (`OLLAMA_HOST=0.0.0.0 ollama serve`, oppure `launchctl setenv OLLAMA_HOST 0.0.0.0` se usi l'app). `host.docker.internal` punta al NAS stesso, quindi serve solo se Ollama gira sul NAS.
 - **Cambiare provider**: modifica l'ordine di `LLM_PROVIDERS` o aggiungi un nome nuovo con le sue variabili (es. `openrouter`), poi riavvia il container. Non serve toccare il codice.
 
@@ -155,12 +160,7 @@ docker buildx build --builder lilith-builder --platform linux/arm/v7 --provenanc
 Poi, sul QNAP:
 1. **Container Station** » *Images* » *Import*, e seleziona il `.tar` (oppure via SSH: `docker load -i issued-lilith-armv7.tar`).
 2. Copia sul NAS, per esempio in `/share/Container/issued-lilith/`, i file `docker-compose.yml` e `.env`.
-3. Crea la cartella dei dati con i permessi dell'utente del container (uid 1000):
-   ```sh
-   mkdir -p /share/Container/issued-lilith/data
-   chown -R 1000:1000 /share/Container/issued-lilith/data
-   ```
-4. **Container Station** » *Applications* » *Create*: incolla il `docker-compose.yml` (o, via SSH, `docker compose up -d` in quella cartella). L'immagine `issued-lilith:latest` esiste già, quindi non viene ricompilata.
+3. **Container Station** » *Applications* » *Create*: incolla il `docker-compose.yml` (o, via SSH, `docker compose up -d` in quella cartella). L'immagine `issued-lilith:latest` esiste già, quindi non viene ricompilata.
 
 ### Opzione B: GitHub Container Registry (build automatica)
 
@@ -184,17 +184,24 @@ Di tag e Release si occupa il workflow: non serve fare push di tag.
 
 Il pacchetto è **pubblico**: un pacchetto creato da un workflow eredita la visibilità della repo, e da pubblico non può più tornare privato. Contiene solo il codice già presente nella repo. `.env`, `data/` e `.git` sono esclusi da `.dockerignore`: **non mettere mai segreti nel Dockerfile** (`ENV`/`ARG`), perché finirebbero in un'immagine scaricabile da chiunque.
 
-#### Sul NAS
+#### Sul NAS, solo dall'interfaccia web
 
-1. Nel `.env` accanto al `docker-compose.yml` imposta `LILITH_IMAGE`:
+1. **File Station**: nella cartella condivisa `Container` crea la cartella `issued-lilith` e, al suo interno, la cartella `data`. Carica in `issued-lilith` il tuo file `.env`.
+   Il risultato deve essere `/share/Container/issued-lilith/.env` più `/share/Container/issued-lilith/data/`.
+2. **Container Station** » *Applications* » *Create*: dai all'applicazione il nome `issued-lilith`, incolla il contenuto di [`docker-compose.qnap.yml`](docker-compose.qnap.yml) e clicca *Create*. Container Station scarica l'immagine da ghcr.io (è pubblica, quindi non serve login) e avvia il bot.
+3. Per aggiornare alla versione più recente: in Container Station apri l'applicazione e ricreala/rifai il deploy (*Recreate*/*Pull and redeploy*, il nome cambia a seconda della versione), così scarica di nuovo l'immagine.
 
-   | `LILITH_IMAGE=ghcr.io/eyeleren/issued-lilith:…` | Cosa ricevi con `docker compose pull` |
-   |---|---|
-   | `latest` | ogni push su `main` |
-   | `2` | ogni versione 2.x |
-   | `2.3.0` | esattamente quella versione (per tornare indietro) |
+Non serve sistemare i permessi della cartella `data`: al primo avvio il container la assegna all'utente `node` (uid 1000) e poi gira come quell'utente, non come root.
 
-2. Per aggiornare: `docker compose pull && docker compose up -d`. Non serve fare login: il pacchetto è pubblico.
+Il tag dell'immagine in `docker-compose.qnap.yml` decide quali aggiornamenti ricevi:
+
+| `image: ghcr.io/eyeleren/issued-lilith:…` | Cosa ricevi aggiornando |
+|---|---|
+| `latest` | ogni push su `main` |
+| `2` | ogni versione 2.x (default) |
+| `2.3.0` | esattamente quella versione (per tornare indietro) |
+
+Con SSH, lo stesso si fa con il `docker-compose.yml` normale (`LILITH_IMAGE` nel `.env`) e `docker compose pull && docker compose up -d`.
 
 La versione in esecuzione compare nei log all'avvio e nella risposta di `/ping`.
 

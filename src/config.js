@@ -154,6 +154,8 @@ export function loadConfig(env = process.env) {
 			allowDms,
 			requiresMention: bool("REQUIRES_MENTION", true),
 			systemPrompt,
+			creatorId: snowflake("CREATOR_ID"),
+			creatorName: str("CREATOR_NAME"),
 			initialPrompt: unescape(str("INITIAL_PROMPT")),
 			showStartOfConversation: bool("SHOW_START_OF_CONVERSATION", false),
 			historyMaxMessages: int("HISTORY_MAX_MESSAGES", 20, { min: 2, max: 500 }),

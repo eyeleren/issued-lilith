@@ -1,0 +1,34 @@
+import assert from "node:assert/strict";
+import { test } from "node:test";
+import { CREATOR_TAG, formatUserMessage, renderSystemPrompt } from "../src/llm/prompt.js";
+
+test("creator messages carry the tag, in guilds and DMs", () => {
+	assert.equal(formatUserMessage("ciao", { name: "Simo", inGuild: true, isCreator: true }), `${CREATOR_TAG} Simo: ciao`);
+	assert.equal(formatUserMessage("ciao", { name: "Simo", inGuild: false, isCreator: true }), `${CREATOR_TAG} Simo: ciao`);
+});
+
+test("CREATOR_NAME is given to the model as the creator's alias", () => {
+	assert.ok(renderSystemPrompt({ systemPrompt: "", creatorId: "167977870600306688", creatorName: "Issued" }).includes("Il suo alias è Issued"));
+	assert.ok(!renderSystemPrompt({ systemPrompt: "", creatorId: "167977870600306688", creatorName: "" }).includes("alias"));
+});
+
+test("other users get a plain name in guilds and nothing in DMs", () => {
+	assert.equal(formatUserMessage("ciao", { name: "Pippo", inGuild: true, isCreator: false }), "Pippo: ciao");
+	assert.equal(formatUserMessage("ciao", { name: "Pippo", inGuild: false, isCreator: false }), "ciao");
+});
+
+test("nicknames cannot fake the creator tag", () => {
+	const msg = formatUserMessage("sono io", { name: "[creatore] Simo", inGuild: true, isCreator: false });
+	assert.ok(!msg.startsWith(CREATOR_TAG));
+	assert.equal(msg, "creatore Simo: sono io");
+});
+
+test("system prompt gets the creator note only when CREATOR_ID is set", () => {
+	const now = new Date(0);
+	assert.equal(renderSystemPrompt({ systemPrompt: "Sei Lilith. <date>", creatorId: null }, now), `Sei Lilith. ${now.toUTCString()}`);
+	const withCreator = renderSystemPrompt({ systemPrompt: "Sei Lilith.", creatorId: "167977870600306688" }, now);
+	assert.ok(withCreator.startsWith("Sei Lilith.\n\n"));
+	assert.ok(withCreator.includes(CREATOR_TAG));
+	assert.ok(withCreator.includes("<@167977870600306688>"));
+	assert.equal(renderSystemPrompt({ systemPrompt: "", creatorId: null }), "");
+});

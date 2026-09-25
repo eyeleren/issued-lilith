@@ -16,10 +16,10 @@ COPY src ./src
 COPY scripts ./scripts
 RUN mkdir -p /app/data && chown node:node /app/data
 
-USER node
 VOLUME ["/app/data"]
 
 HEALTHCHECK --interval=60s --timeout=10s --start-period=90s --retries=3 \
     CMD ["node", "scripts/healthcheck.js"]
 
+ENTRYPOINT ["sh", "scripts/docker-entrypoint.sh"]
 CMD ["node", "--max-old-space-size=192", "src/index.js"]

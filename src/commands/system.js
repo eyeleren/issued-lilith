@@ -8,7 +8,7 @@ export default {
 		.setDescription("Mostra il system prompt in uso"),
 
 	async execute(interaction, { config }) {
-		const prompt = renderSystemPrompt(config.chat.systemPrompt);
+		const prompt = renderSystemPrompt(config.chat);
 		const chunks = splitMessage(prompt ? `System prompt:\n\n${prompt}` : "Nessun system prompt impostato.");
 		await interaction.reply({ content: chunks[0], flags: MessageFlags.Ephemeral });
 		for (const chunk of chunks.slice(1)) {

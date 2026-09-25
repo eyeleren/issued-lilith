@@ -1,6 +1,6 @@
 import { MessageType } from "discord.js";
 import { AllProvidersFailedError } from "../llm/client.js";
-import { cleanContent, renderSystemPrompt, stripReasoning } from "../llm/prompt.js";
+import { cleanContent, formatUserMessage, renderSystemPrompt, stripReasoning } from "../llm/prompt.js";
 import { createLogger } from "../logger.js";
 import { splitMessage } from "../util/splitMessage.js";
 
@@ -92,10 +92,14 @@ export function createChatHandler({ config, llm, conversations }) {
 		if (!text) return;
 
 		const isFirstTurn = conversations.turns(key) === 0;
-		let userContent = message.guild ? `${message.member?.displayName ?? message.author.username}: ${text}` : text;
+		let userContent = formatUserMessage(text, {
+			name: message.member?.displayName ?? message.author.globalName ?? message.author.username,
+			inGuild: Boolean(message.guild),
+			isCreator: message.author.id === chat.creatorId
+		});
 		if (isFirstTurn && chat.initialPrompt) userContent = `${chat.initialPrompt}\n\n${userContent}`;
 
-		const system = renderSystemPrompt(chat.systemPrompt);
+		const system = renderSystemPrompt(chat);
 		const request = [
 			...(system ? [{ role: "system", content: system }] : []),
 			...conversations.history(key),
