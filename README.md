@@ -10,7 +10,7 @@
 - **Fallback tra provider**: lista ordinata. Con timeout, errori, host irraggiungibile o 429 passa al provider successivo; il `retry-after` viene rispettato. Se sono tutti giù risponde "IA momentaneamente offline" e non crasha.
 - **Hardban**: se qualcuno sbanna un utente in lista, il bot lo ribanna subito e registra nel mod-log chi aveva tentato lo sban (letto dall'Audit Log).
 - **Slash command**: `/help`, `/ping`, `/model`, `/system`, `/reset`, `/hardban`, `/restart` e `/text2img` (quest'ultimo solo se è configurato Stable Diffusion).
-- **Pulizia giornaliera**: ogni giorno a un'ora fissa (default 05:00, ora italiana) svuota i canali scelti, conservando il primo messaggio e quelli fissati, e azzera la memoria della conversazione. È una "chat del giorno". Se il bot era spento a quell'ora, recupera la pulizia al riavvio.
+- **Pulizia giornaliera**: ogni giorno a un'ora fissa (default 05:00, ora italiana) svuota i canali scelti, conservando solo i messaggi fissati, e azzera la memoria della conversazione. È una "chat del giorno". Se il bot era spento a quell'ora, recupera la pulizia al riavvio.
 - Stato personalizzato e messaggio di benvenuto al login con mention di un ruolo.
 
 ## Comandi
@@ -76,7 +76,7 @@ Copia `.env.example` in `.env` (`make env`) e compilalo. Il file è commentato v
 | `ATTACHMENT_MAX_BYTES` | `100000` | Dimensione massima degli allegati di testo (0 = ignora) |
 | `ACTIVITY_MESSAGE` | — | Stato personalizzato |
 | `GREETING_CHANNEL_ID`, `COMMANDER_ROLE_ID`, `GREETING_MESSAGE` | — | Messaggio al login; `{role}` diventa la mention del ruolo |
-| `DAILY_PURGE_CHANNELS` | — | Canali da svuotare ogni giorno (primo messaggio e messaggi fissati restano) |
+| `DAILY_PURGE_CHANNELS` | — | Canali da svuotare ogni giorno (restano solo i messaggi fissati) |
 | `DAILY_PURGE_TIME` / `TZ` | `05:00` / UTC | Ora della pulizia e fuso orario: imposta `TZ=Europe/Rome` |
 | `MODLOG_CHANNEL_ID` | — | Canale dove vengono registrati re-ban e modifiche alla lista hardban |
 | `STABLE_DIFFUSION` | — | URL di AUTOMATIC1111 (`--api`); vuota = niente `/text2img` |

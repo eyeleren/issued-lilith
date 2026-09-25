@@ -34,11 +34,8 @@ async function pinnedIds(channel) {
 	return ids;
 }
 
-// Keeps the channel's very first message (e.g. a webhook intro) and pinned messages.
 export async function purgeChannel(channel) {
 	const keep = await pinnedIds(channel);
-	const first = (await channel.messages.fetch({ after: "0", limit: 1, cache: false })).first();
-	if (first) keep.add(first.id);
 
 	let deleted = 0;
 	let before;

@@ -20,6 +20,6 @@ export default {
 		}
 		await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 		const deleted = await dailyPurge.runChannel(interaction.channelId);
-		await interaction.editReply(`Canale svuotato: ${deleted} messaggi eliminati, primo messaggio e messaggi fissati conservati.`);
+		await interaction.editReply(`Canale svuotato: ${deleted} messaggi eliminati, messaggi fissati conservati.`);
 	}
 };
