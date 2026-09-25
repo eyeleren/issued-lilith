@@ -207,6 +207,10 @@ Il pacchetto è **pubblico**: un pacchetto creato da un workflow eredita la visi
    - Il suo eseguibile è compatibile con le pagine da 32 KB del QNAP (verificato con `check-elf-alignment.sh`).
    - Dopo un aggiornamento Lilith si riavvia e manda di nuovo il messaggio di benvenuto; la pulizia delle 5:00 lo toglie poco dopo.
 
+**Cambiare la configurazione:**
+- `persona.txt` (in `data/`, collegato con `SYSTEM_FILE=/app/data/persona.txt`) viene letto a ogni avvio: dopo una modifica basta **riavviare** il container.
+- `lilith.env` viene letto solo quando il container viene **creato**: né un riavvio né un aggiornamento di Watchtower lo rileggono. Dopo una modifica bisogna **ricreare** l'applicazione (eliminarla e crearla di nuovo con lo stesso YAML; l'immagine e `data/` restano).
+
 Non serve sistemare i permessi della cartella `data`: al primo avvio il container la assegna all'utente `node` (uid 1000) e poi gira come quell'utente, non come root.
 
 Il tag dell'immagine in `docker-compose.qnap.yml` decide quali aggiornamenti ricevi:
