@@ -9,3 +9,4 @@ data/
 .idea/
 npm-debug.log*
 lilith.env
+persona.txt

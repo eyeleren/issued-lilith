@@ -19,3 +19,4 @@ Dockerfile
 .dockerignore
 .githooks/
 lilith.env
+persona.txt
